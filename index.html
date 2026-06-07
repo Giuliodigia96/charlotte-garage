@@ -414,15 +414,16 @@ function mostraLoadingDisplay(mode) {
 }
 
 function estraiTarga(imageData, mode) {
-  const blob = dataURLtoBlob(imageData);
-  const fd = new FormData();
-  fd.append('image', blob, 'targa.jpg');
+  // Invia come base64 JSON — evita il blocco FormData su GitHub Pages
+  const base64 = imageData.split(',')[1];
+  const mimeType = imageData.split(';')[0].split(':')[1];
 
   mostraDebug(mode, '📡 Chiamata proxy in corso...');
 
   fetch('https://charlotte-proxy.onrender.com/read-plate', {
     method: 'POST',
-    body: fd
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: base64, mime: mimeType })
   })
   .then(r => {
     mostraDebug(mode, '📥 HTTP status: ' + r.status);
