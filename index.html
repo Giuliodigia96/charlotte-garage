@@ -316,10 +316,16 @@
     <div id="conv-selected-badge" style="display:none;margin-top:8px;background:rgba(124,58,237,0.15);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--accent3);font-family:'Share Tech Mono',monospace;"></div>
     <div id="conv-info" style="margin-top:6px;font-size:12px;color:var(--green);display:none;font-family:'Share Tech Mono',monospace;"></div>
     <div id="cat-section" style="display:none; margin-top:10px;">
-      <div class="manual-label" style="margin-bottom:6px;">Categoria</div>
+      <div class="manual-label" style="margin-bottom:6px;">Categoria veicolo</div>
       <div class="cat-row">
-        <div class="cat-btn" onclick="selezionaCat(this,'A')">Cat. A</div>
-        <div class="cat-btn" onclick="selezionaCat(this,'B')">Cat. B</div>
+        <div class="cat-btn" onclick="selezionaCat(this,'CAT-A')">
+          <div style="font-size:15px;font-weight:bold;">Cat. A</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Piccole / Medie</div>
+        </div>
+        <div class="cat-btn" onclick="selezionaCat(this,'CAT-B')">
+          <div style="font-size:15px;font-weight:bold;">Cat. B</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Grandi / Van / Luxury</div>
+        </div>
       </div>
     </div>
   </div>
