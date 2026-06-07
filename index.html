@@ -187,6 +187,20 @@
     .pin-grid { max-width:360px; gap:16px; }
   }
 
+
+  .conv-section { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; }
+  .conv-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .conv-btn { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; cursor:pointer; font-size:11px; color:var(--muted); transition:all 0.2s; }
+  .conv-btn.selected { background:rgba(16,185,129,0.15); border-color:var(--green); color:var(--green); }
+  .conv-btn .conv-icon { font-size:18px; display:block; margin-bottom:3px; }
+  .cat-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .cat-btn { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:8px; text-align:center; cursor:pointer; font-size:13px; color:var(--muted); transition:all 0.2s; font-family:'Share Tech Mono',monospace; }
+  .cat-btn.selected { background:rgba(245,158,11,0.15); border-color:var(--amber); color:var(--amber); }
+  @media (min-width:600px) {
+    .conv-btn { font-size:16px; padding:14px 8px; } .conv-btn .conv-icon { font-size:28px; }
+    .cat-btn { font-size:18px; padding:12px; }
+  }
+
 </style>
 </head>
 <body>
@@ -235,6 +249,9 @@
     <div class="action-btn ricerca" onclick="showScreen('ricerca')">
       <span class="btn-icon">🔍</span><div class="btn-label">Cerca</div><div class="btn-sub">Per targa</div>
     </div>
+    <div class="action-btn" onclick="showScreen('report')" style="grid-column:1/-1;" >
+      <span class="btn-icon" style="font-size:48px;">📊</span><div class="btn-label" style="color:var(--accent3);">Report Storico</div><div class="btn-sub">Tutte le soste</div>
+    </div>
   </div>
 </div>
 
@@ -278,6 +295,24 @@
       <div class="tipo-btn" onclick="selezionaTipo(this,'VAN')"><span class="tipo-icon">🚐</span>Van</div>
       <div class="tipo-btn" onclick="selezionaTipo(this,'MOTO')"><span class="tipo-icon">🏍️</span>Moto</div>
       <div class="tipo-btn" onclick="selezionaTipo(this,'ALTRO')"><span class="tipo-icon">🚛</span>Altro</div>
+    </div>
+  </div>
+
+
+  <div class="conv-section" id="conv-section">
+    <div class="manual-label">Convenzione hotel</div>
+    <div class="conv-grid">
+      <div class="conv-btn" onclick="selezionaConv(this,'NESSUNA')"><span class="conv-icon">🅿️</span>Nessuna</div>
+      <div class="conv-btn" onclick="selezionaConv(this,'HOTEL MEDICI')"><span class="conv-icon">🏨</span>Hotel Medici</div>
+      <div class="conv-btn" onclick="selezionaConv(this,'HOTEL BODONI')"><span class="conv-icon">🏨</span>Hotel Bodoni</div>
+      <div class="conv-btn" onclick="selezionaConv(this,'HOTEL JAMES')"><span class="conv-icon">🏨</span>Hotel James</div>
+    </div>
+    <div id="cat-section" style="display:none; margin-top:10px;">
+      <div class="manual-label" style="margin-bottom:6px;">Categoria</div>
+      <div class="cat-row">
+        <div class="cat-btn" onclick="selezionaCat(this,'A')">Cat. A</div>
+        <div class="cat-btn" onclick="selezionaCat(this,'B')">Cat. B</div>
+      </div>
     </div>
   </div>
 
@@ -408,6 +443,7 @@ function showScreen(name) {
   document.getElementById('screen-'+name).classList.add('active');
   if (name === 'home') { resetIngresso(); resetUscita(); aggiornaStats(); }
   if (name === 'lista') aggiornaLista();
+  if (name === 'report') aggiornaReport();
   if (name === 'ricerca') { document.getElementById('search-input').value = ''; document.getElementById('search-results').innerHTML = ''; }
 }
 function cambiaGarage(val) { garageAttuale = val; aggiornaStats(); }
@@ -569,19 +605,25 @@ function confermaTargaManuale(mode) {
 // ─── TIPO VEICOLO ───
 function selezionaTipo(btn, tipo) {
   document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.conv-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  convSelezionata = 'NESSUNA'; categoriaSelezionata = '';
+  document.getElementById('cat-section').style.display = 'none';
   btn.classList.add('selected'); tipoVeicoloSelezionato = tipo; checkConfermaIngresso();
 }
 function checkConfermaIngresso() {
-  document.getElementById('btn-conferma-in').classList.toggle('enabled', targaCorrente.length >= 5 && !!tipoVeicoloSelezionato);
+  const convOk = convSelezionata === 'NESSUNA' || (convSelezionata && (categoriaSelezionata || convSelezionata === 'NESSUNA'));
+  document.getElementById('btn-conferma-in').classList.toggle('enabled', targaCorrente.length >= 5 && !!tipoVeicoloSelezionato && !!convSelezionata);
 }
 
 // ─── INGRESSO ───
 function confermaIngresso() {
   if (!targaCorrente || !tipoVeicoloSelezionato) return;
   const ts = formatDatetime(new Date());
-  const sosta = { id: contatore++, targa: targaCorrente, tipo: tipoVeicoloSelezionato, garage: garageAttuale, ingresso: ts, uscita: null, durata: null };
+  const sosta = { id: contatore++, targa: targaCorrente, tipo: tipoVeicoloSelezionato, garage: garageAttuale, convenzione: convSelezionata, categoria: categoriaSelezionata, ingresso: ts, uscita: null, durata: null };
   localStorage.setItem('charlotte_counter', contatore);
   const soste = getSoste(); soste.push(sosta); saveSoste(soste);
+  salvaSostaRemota(sosta);
   document.getElementById('overlay-icon').textContent = '✅';
   document.getElementById('overlay-targa').textContent = targaCorrente;
   document.getElementById('overlay-title').textContent = 'INGRESSO REGISTRATO';
@@ -594,6 +636,10 @@ function resetIngresso() {
   document.getElementById('targa-display-in').classList.remove('has-targa');
   document.getElementById('manual-in').value='';
   document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.conv-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  convSelezionata = 'NESSUNA'; categoriaSelezionata = '';
+  document.getElementById('cat-section').style.display = 'none';
   document.getElementById('btn-conferma-in').classList.remove('enabled');
 }
 
@@ -627,6 +673,7 @@ function confermaUscita() {
   const ore = Math.floor(diffMins / 60); const minuti = diffMins % 60;
   soste[idx].uscita = ts; soste[idx].durata = `${ore}h ${minuti}m`;
   saveSoste(soste);
+  aggiornaSostaRemota(targaUscita, garageAttuale, ts, `${ore}h ${minuti}m`);
   document.getElementById('overlay-icon').textContent = '🏁';
   document.getElementById('overlay-targa').textContent = targaUscita;
   document.getElementById('overlay-title').textContent = 'USCITA REGISTRATA';
@@ -738,6 +785,111 @@ function verificaPin() {
 }
 
 pinInit();
+
+
+// ─── CONVENZIONE ───
+let convSelezionata = 'NESSUNA';
+let categoriaSelezionata = '';
+
+function selezionaConv(btn, conv) {
+  document.querySelectorAll('.conv-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  convSelezionata = conv;
+  const catSection = document.getElementById('cat-section');
+  if (conv !== 'NESSUNA') {
+    catSection.style.display = 'block';
+  } else {
+    catSection.style.display = 'none';
+    categoriaSelezionata = '';
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  }
+  checkConfermaIngresso();
+}
+
+function selezionaCat(btn, cat) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  categoriaSelezionata = cat;
+  checkConfermaIngresso();
+}
+
+// ─── PROXY API ───
+const PROXY = 'https://charlotte-proxy.onrender.com';
+
+async function salvaSostaRemota(sosta) {
+  try {
+    await fetch(PROXY + '/soste', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(sosta)
+    });
+  } catch(e) {
+    console.error('Errore salvataggio remoto:', e);
+  }
+}
+
+async function aggiornaSostaRemota(targa, garage, uscita, durata) {
+  try {
+    await fetch(PROXY + '/soste', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({targa, garage, uscita, durata})
+    });
+  } catch(e) {
+    console.error('Errore aggiornamento remoto:', e);
+  }
+}
+
+async function caricaSosteRemote(garage, attive) {
+  let url = PROXY + '/soste?garage=' + garage;
+  if (attive) url += '&attive=1';
+  const r = await fetch(url);
+  return await r.json();
+}
+
+// ─── REPORT ───
+async function aggiornaReport() {
+  const conv = document.getElementById('filter-conv').value;
+  const stato = document.getElementById('filter-stato').value;
+  const loading = document.getElementById('report-loading');
+  const list = document.getElementById('report-list');
+
+  loading.style.display = 'block';
+  list.innerHTML = '';
+
+  try {
+    let url = PROXY + '/soste?garage=' + garageAttuale;
+    if (stato === 'attiva') url += '&attive=1';
+    const soste = await (await fetch(url)).json();
+
+    let filtrate = soste;
+    if (conv) filtrate = filtrate.filter(s => s.convenzione === conv);
+    if (stato === 'chiusa') filtrate = filtrate.filter(s => s.uscita);
+
+    loading.style.display = 'none';
+
+    if (!filtrate.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Nessuna sosta trovata</div></div>';
+      return;
+    }
+
+    list.innerHTML = `<div class="section-label">${filtrate.length} soste</div>` +
+      filtrate.reverse().map(s => `
+        <div class="sosta-card ${s.uscita ? 'chiusa' : 'attiva'}">
+          <div class="sosta-info">
+            <div class="sosta-targa">${s.targa}</div>
+            <div class="sosta-tipo">${s.tipo || ''} ${s.convenzione && s.convenzione !== 'NESSUNA' ? '· ' + s.convenzione : ''} ${s.categoria ? '· Cat.' + s.categoria : ''}</div>
+          </div>
+          <div>
+            <div class="sosta-time" style="font-size:10px;">${s.ingresso || ''}</div>
+            ${s.uscita ? `<div class="sosta-duration">${s.durata || ''}</div>` : '<div style="color:var(--green);font-size:11px;">ATTIVA</div>'}
+          </div>
+        </div>`).join('');
+  } catch(e) {
+    loading.style.display = 'none';
+    list.innerHTML = '<div class="empty-state"><div class="empty-text">Errore caricamento dati</div></div>';
+  }
+}
 
 </script>
 
