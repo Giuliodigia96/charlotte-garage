@@ -465,9 +465,9 @@
       <option value="CANTO DEGLI ARANCI">Canto degli Aranci</option>
     </select>
     <select id="filter-stato" onchange="aggiornaReport()" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;">
-      <option value="">Tutte</option>
-      <option value="attiva">Solo attive</option>
-      <option value="chiusa">Solo chiuse</option>
+      <option value="">Tutte le soste</option>
+      <option value="attiva">Soste in corso</option>
+      <option value="chiusa">Soste terminate</option>
     </select>
   </div>
   <div id="report-loading" style="text-align:center;color:var(--muted);padding:20px;display:none;">⏳ Caricamento...</div>
@@ -517,10 +517,15 @@ setInterval(aggiornaOrologio, 1000); aggiornaOrologio();
 
 // ─── STATS ───
 function aggiornaStats() {
-  const soste = getSoste().filter(s => s.garage === garageAttuale);
-  document.getElementById('stat-attive').textContent = soste.filter(s => !s.uscita).length;
-  document.getElementById('stat-oggi').textContent = soste.filter(s => s.ingresso.startsWith(formatDate(new Date()))).length;
-  document.getElementById('stat-tot').textContent = soste.length;
+  try {
+    const soste = getSoste().filter(s => s.garage === garageAttuale);
+    const attive = document.getElementById('stat-attive');
+    const oggi = document.getElementById('stat-oggi');
+    const tot = document.getElementById('stat-tot');
+    if (attive) attive.textContent = soste.filter(s => !s.uscita).length;
+    if (oggi) oggi.textContent = soste.filter(s => s.ingresso && s.ingresso.startsWith(formatDate(new Date()))).length;
+    if (tot) tot.textContent = soste.length;
+  } catch(e) { console.error('aggiornaStats:', e); }
 }
 
 // ─── NAVIGAZIONE ───
@@ -693,7 +698,8 @@ function selezionaTipo(btn, tipo) {
   document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
   convSelezionata = ''; categoriaSelezionata = '';
-  document.getElementById('cat-section').style.display = 'none';
+  const catSec = document.getElementById('cat-section');
+  if (catSec) catSec.style.display = 'none';
   const convSel = document.getElementById('conv-select');
   if (convSel) convSel.value = '';
   const infoEl = document.getElementById('conv-info');
@@ -727,7 +733,8 @@ function resetIngresso() {
   document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
   convSelezionata = ''; categoriaSelezionata = '';
-  document.getElementById('cat-section').style.display = 'none';
+  const catSec = document.getElementById('cat-section');
+  if (catSec) catSec.style.display = 'none';
   const convSel = document.getElementById('conv-select');
   if (convSel) convSel.value = '';
   const infoEl = document.getElementById('conv-info');
@@ -814,7 +821,11 @@ function formatDatetime(d) { return formatDate(d)+' '+String(d.getHours()).padSt
 function parseDatetime(s) { const [dt,tm]=s.split(' '); const [dd,mo,yy]=dt.split('/'); const [hh,mm]=tm.split(':'); return new Date(yy,mo-1,dd,hh,mm); }
 function dataURLtoBlob(d) { const a=d.split(','); const m=a[0].match(/:(.*?);/)[1]; const b=atob(a[1]); let n=b.length; const u=new Uint8Array(n); while(n--) u[n]=b.charCodeAt(n); return new Blob([u],{type:m}); }
 
-aggiornaStats();
+// Init sicuro dopo DOM caricato
+document.addEventListener('DOMContentLoaded', function() {
+  aggiornaStats();
+  pinInit();
+});
 
 // ─── PIN ───
 const PIN_CORRETTO = '4422';
@@ -876,7 +887,6 @@ function verificaPin() {
   }
 }
 
-pinInit();
 
 
 // ─── CONVENZIONE ───
